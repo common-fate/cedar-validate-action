@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import { readFileSync } from 'fs'
-import { glob } from 'glob'
+import { Glob, glob } from 'glob'
 import { validatePolicySet } from './validate'
 
 /**
@@ -9,7 +9,17 @@ import { validatePolicySet } from './validate'
  */
 export async function run(): Promise<void> {
   try {
-    const schemaFile: string = core.getInput('schema-file')
+    const schemaFilePattern: string = core.getInput('schema-file')
+
+    const schemaMatches = await glob(schemaFilePattern)
+
+    if (schemaMatches.length === 0) {
+      throw new Error(
+        `could not find a Cedar schema file (looked for ${schemaFilePattern}`
+      )
+    }
+
+    const schemaFile = schemaMatches[0]
 
     const schemaString = readFileSync(schemaFile, 'utf-8')
 

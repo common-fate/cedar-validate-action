@@ -1,6 +1,7 @@
-name: 'The name of your action here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'Validate Cedar Policies'
+description:
+  'A GitHub Action to validate Cedar policies against a Cedar schema.'
+author: 'Common Fate'
 
 # Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
@@ -9,15 +10,12 @@ branding:
 
 # Define your inputs here.
 inputs:
-  milliseconds:
-    description: 'Your input description here'
+  schema-file:
+    description:
+      'The path to the Cedar schema file to use for validation. If a glob is
+      specified, the first file matching the glob will be used.'
     required: true
-    default: '1000'
-
-# Define your outputs here.
-outputs:
-  time:
-    description: 'Your output description here'
+    default: '**/*.cedarschema.json'
 
 runs:
   using: node20
