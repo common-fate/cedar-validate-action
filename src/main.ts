@@ -53,13 +53,13 @@ export async function run(): Promise<void> {
       })
 
       if (result.validationErrors.length > 0) {
-        console.log(`${chalk.red('✗')} ${chalk.dim(policyFile)}`)
+        core.info(`${chalk.red('✗')} ${chalk.dim(policyFile)}`)
       } else if (result.validationWarnings.length > 0) {
-        console.log(
+        core.info(
           `${chalk.green('✔')} ${chalk.dim(policyFile)} ${chalk.yellow('[has warnings]')}`
         )
       } else {
-        console.log(`${chalk.green('✔')} ${chalk.dim(policyFile)}`)
+        core.info(`${chalk.green('✔')} ${chalk.dim(policyFile)}`)
       }
 
       if (result.schemaErrors.length > 0) {
