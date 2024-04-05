@@ -1,10 +1,5 @@
-import { Schema, validate } from '@common-fate/cedar-node'
+import { ValidationCall, validate } from '@common-fate/cedar-node'
 import { LineColumn, LineColumnFinder } from './line-column-from-index'
-
-interface ValidateInput {
-  policySet: string
-  schema: Schema
-}
 
 interface ValidationError {
   policyId: string
@@ -33,7 +28,7 @@ export interface ValidateOutput {
  * Validates a Cedar PolicySet. Returns warnings that are mapped to Line/Column locations
  * so that they can be used in the GitHub Action for annotations.
  */
-export const validatePolicySet = (input: ValidateInput): ValidateOutput => {
+export const validatePolicySet = (input: ValidationCall): ValidateOutput => {
   const result = validate(input)
   const finder = new LineColumnFinder(input.policySet)
 

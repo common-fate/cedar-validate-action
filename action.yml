@@ -16,6 +16,18 @@ inputs:
       specified, the first file matching the glob will be used.'
     required: true
     default: '**/*.cedarschema.json'
+  ignore-confusable-identifier-warning:
+    description:
+      'Ignore the confusable identifier warning, to prevent "/" characters in
+      entity IDs from triggering warnings. Defaults to true. When
+      https://github.com/cedar-policy/cedar/issues/621 is resolved, the default
+      will be updated to false.'
+    required: true
+    default: 'true'
+  fail-on-warnings:
+    description: 'Set the action status to fail if any warnings are present.'
+    required: true
+    default: 'true'
 
 runs:
   using: node20

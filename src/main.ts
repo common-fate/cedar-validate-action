@@ -2,7 +2,12 @@ import * as core from '@actions/core'
 import chalk from 'chalk'
 import { readFileSync } from 'fs'
 import { glob } from 'glob'
-import { validatePolicySet } from './validate'
+import { ValidateOutput, validatePolicySet } from './validate'
+
+interface TestResult {
+  file: string
+  result: ValidateOutput
+}
 
 /**
  * The main function for the action.
@@ -31,6 +36,7 @@ export async function run(): Promise<void> {
     const policyFiles = await glob('**/*.cedar')
 
     let hasErrors = false
+    let hasWarnings = false
 
     if (policyFiles.length === 0) {
       // fail the action as this is a misconfiguration, we shouldn't pass if there are no policies to test
@@ -47,21 +53,24 @@ export async function run(): Promise<void> {
       core.info(`Validating 1 Cedar policy using schema ${schemaFile}...`)
     }
 
+    const filesWithIssues: TestResult[] = []
+
     for (const policyFile of policyFiles) {
       const policySet = readFileSync(policyFile, 'utf-8')
       const result = validatePolicySet({
         schema,
-        policySet
+        policySet,
+        ignoreConfusableIdentifierWarning: core.getBooleanInput(
+          'ignore-confusable-identifier-warning'
+        )
       })
 
       if (result.validationErrors.length > 0) {
-        core.info(`${chalk.red('✗')} ${chalk.dim(policyFile)}`)
+        core.info(`${policyFile} ... FAIL`)
       } else if (result.validationWarnings.length > 0) {
-        core.info(
-          `${chalk.green('✔')} ${chalk.dim(policyFile)} ${chalk.yellow('[has warnings]')}`
-        )
+        core.info(`${policyFile} ... warn`)
       } else {
-        core.info(`${chalk.green('✔')} ${chalk.dim(policyFile)}`)
+        core.info(`${policyFile} ... ok`)
       }
 
       if (result.schemaErrors.length > 0) {
@@ -79,9 +88,29 @@ export async function run(): Promise<void> {
         throw new Error(`Cedar schema is invalid:\n${allErrors.join('\n')}`)
       }
 
-      for (const err of result.validationErrors) {
-        core.error(err.error, {
+      if (
+        result.validationErrors.length > 0 ||
+        result.schemaErrors.length > 0
+      ) {
+        filesWithIssues.push({
           file: policyFile,
+          result
+        })
+      }
+    }
+
+    if (filesWithIssues.length > 0) {
+      core.info('\nissues:\n')
+    }
+
+    for (const result of filesWithIssues) {
+      core.info(`---- ${result.file} ----`)
+
+      for (const err of result.result.validationErrors) {
+        core.info(`[ERROR] ${err.policyId}: ${err.error}`)
+
+        core.error(err.error, {
+          file: result.file,
           startColumn: err.sourceLocation?.start.col,
           startLine: err.sourceLocation?.start.line,
           endColumn: err.sourceLocation?.end.col,
@@ -91,20 +120,29 @@ export async function run(): Promise<void> {
         hasErrors = true
       }
 
-      for (const err of result.validationWarnings) {
+      for (const err of result.result.validationWarnings) {
+        core.info(`[WARNING] ${err.policyId}: ${err.warning}`)
+
         core.warning(err.warning, {
-          file: policyFile,
+          file: result.file,
           startColumn: err.sourceLocation?.start.col,
           startLine: err.sourceLocation?.start.line,
           endColumn: err.sourceLocation?.end.col,
           endLine: err.sourceLocation?.end.line,
           title: 'Cedar Validation Warning'
         })
+        hasWarnings = true
       }
+    }
 
-      if (hasErrors) {
-        core.setFailed('Cedar policies have validation errors')
-      }
+    if (hasErrors) {
+      core.setFailed('Cedar policies have validation errors')
+    }
+
+    if (hasWarnings && core.getBooleanInput('fail-on-warnings')) {
+      core.setFailed(
+        `Cedar policies have validation warnings\n(if you'd like to mark the action as succeeded despite warnings, you can set 'fail-on-warnings' to false)`
+      )
     }
   } catch (error) {
     // Fail the workflow run if an error occurs
