@@ -137,11 +137,13 @@ export async function run(): Promise<void> {
 
     if (hasErrors) {
       core.setFailed('Cedar policies have validation errors')
+      return
     }
 
     if (hasWarnings && core.getBooleanInput('fail-on-warnings')) {
-      core.setFailed(
-        `Cedar policies have validation warnings\n(if you'd like to mark the action as succeeded despite warnings, you can set 'fail-on-warnings' to false)`
+      core.setFailed(`Cedar policies have validation warnings`)
+      core.info(
+        "if you'd like to mark the action as succeeded despite warnings, you can set 'fail-on-warnings' to false"
       )
     }
   } catch (error) {
