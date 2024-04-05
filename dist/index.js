@@ -1948,6 +1948,16 @@ function getStringFromWasm0(ptr, len) {
     return cachedTextDecoder.decode(getUint8Memory0().subarray(ptr, ptr + len));
 }
 /**
+* Parse a policy set and optionally validate it against a provided schema
+* @param {ValidationCall} call
+* @returns {ValidateResult}
+*/
+module.exports.validate = function(call) {
+    const ret = wasm.validate(addHeapObject(call));
+    return takeObject(ret);
+};
+
+/**
 * @param {string} json_str
 * @returns {JsonToPolicyResult}
 */
@@ -1988,16 +1998,6 @@ module.exports.checkParseTemplate = function(template_str) {
     const ptr0 = passStringToWasm0(template_str, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len0 = WASM_VECTOR_LEN;
     const ret = wasm.checkParseTemplate(ptr0, len0);
-    return takeObject(ret);
-};
-
-/**
-* Parse a policy set and optionally validate it against a provided schema
-* @param {ValidationCall} call
-* @returns {ValidateResult}
-*/
-module.exports.validate = function(call) {
-    const ret = wasm.validate(addHeapObject(call));
     return takeObject(ret);
 };
 
@@ -37016,6 +37016,7 @@ const validatePolicySet = (input) => {
  */
 async function run() {
     try {
+        (source_default()).level = 2; // enable colored output for GitHub Actions
         const schemaFilePattern = core.getInput('schema-file');
         const schemaMatches = await glob(schemaFilePattern);
         if (schemaMatches.length === 0) {
@@ -37026,6 +37027,7 @@ async function run() {
         const schema = JSON.parse(schemaString);
         const policyFiles = await glob('**/*.cedar');
         let hasErrors = false;
+        let hasWarnings = false;
         if (policyFiles.length === 0) {
             // fail the action as this is a misconfiguration, we shouldn't pass if there are no policies to test
             throw new Error(`could not find any Cedar policies to validate (looked for ${policyFiles})`);
@@ -37036,20 +37038,22 @@ async function run() {
         else {
             core.info(`Validating 1 Cedar policy using schema ${schemaFile}...`);
         }
+        const filesWithIssues = [];
         for (const policyFile of policyFiles) {
             const policySet = (0,external_fs_.readFileSync)(policyFile, 'utf-8');
             const result = validatePolicySet({
                 schema,
-                policySet
+                policySet,
+                ignoreConfusableIdentifierWarning: core.getBooleanInput('ignore-confusable-identifier-warning')
             });
             if (result.validationErrors.length > 0) {
-                core.info(`${source_default().red('✗')} ${source_default().dim(policyFile)}`);
+                core.info(`${policyFile} ... FAIL`);
             }
             else if (result.validationWarnings.length > 0) {
-                core.info(`${source_default().green('✔')} ${source_default().dim(policyFile)} ${source_default().yellow('[has warnings]')}`);
+                core.info(`${policyFile} ... warn`);
             }
             else {
-                core.info(`${source_default().green('✔')} ${source_default().dim(policyFile)}`);
+                core.info(`${policyFile} ... ok`);
             }
             if (result.schemaErrors.length > 0) {
                 const allErrors = [];
@@ -37063,9 +37067,23 @@ async function run() {
                 }
                 throw new Error(`Cedar schema is invalid:\n${allErrors.join('\n')}`);
             }
-            for (const err of result.validationErrors) {
-                core.error(err.error, {
+            if (result.validationErrors.length > 0 ||
+                result.schemaErrors.length > 0) {
+                filesWithIssues.push({
                     file: policyFile,
+                    result
+                });
+            }
+        }
+        if (filesWithIssues.length > 0) {
+            core.info('\nissues:\n');
+        }
+        for (const result of filesWithIssues) {
+            core.info(`---- ${result.file} ----`);
+            for (const err of result.result.validationErrors) {
+                core.info(`[ERROR] ${err.policyId}: ${err.error}`);
+                core.error(err.error, {
+                    file: result.file,
                     startColumn: err.sourceLocation?.start.col,
                     startLine: err.sourceLocation?.start.line,
                     endColumn: err.sourceLocation?.end.col,
@@ -37074,19 +37092,24 @@ async function run() {
                 });
                 hasErrors = true;
             }
-            for (const err of result.validationWarnings) {
+            for (const err of result.result.validationWarnings) {
+                core.info(`[WARNING] ${err.policyId}: ${err.warning}`);
                 core.warning(err.warning, {
-                    file: policyFile,
+                    file: result.file,
                     startColumn: err.sourceLocation?.start.col,
                     startLine: err.sourceLocation?.start.line,
                     endColumn: err.sourceLocation?.end.col,
                     endLine: err.sourceLocation?.end.line,
-                    title: 'Cedar Validation Error'
+                    title: 'Cedar Validation Warning'
                 });
+                hasWarnings = true;
             }
-            if (hasErrors) {
-                core.setFailed('Cedar policies have validation errors');
-            }
+        }
+        if (hasErrors) {
+            core.setFailed('Cedar policies have validation errors');
+        }
+        if (hasWarnings && core.getBooleanInput('fail-on-warnings')) {
+            core.setFailed(`Cedar policies have validation warnings\n(if you'd like to mark the action as succeeded despite warnings, you can set 'fail-on-warnings' to false)`);
         }
     }
     catch (error) {
