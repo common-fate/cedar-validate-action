@@ -1,0 +1,30 @@
+{
+  "": {
+    "actions": {
+      "View": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["Document"]
+        }
+      }
+    },
+    "entityTypes": {
+      "User": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "name": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "Document": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      }
+    }
+  }
+}
