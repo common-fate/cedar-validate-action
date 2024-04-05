@@ -115,7 +115,7 @@ export async function run(): Promise<void> {
           startLine: err.sourceLocation?.start.line,
           endColumn: err.sourceLocation?.end.col,
           endLine: err.sourceLocation?.end.line,
-          title: 'Cedar Validation Error'
+          title: 'Cedar Policy Validation Error'
         })
         hasErrors = true
       }
@@ -129,7 +129,7 @@ export async function run(): Promise<void> {
           startLine: err.sourceLocation?.start.line,
           endColumn: err.sourceLocation?.end.col,
           endLine: err.sourceLocation?.end.line,
-          title: 'Cedar Validation Warning'
+          title: 'Cedar Policy Validation Warning'
         })
         hasWarnings = true
       }
