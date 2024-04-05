@@ -1,6 +1,7 @@
 import * as core from '@actions/core'
+import chalk from 'chalk'
 import { readFileSync } from 'fs'
-import { Glob, glob } from 'glob'
+import { glob } from 'glob'
 import { validatePolicySet } from './validate'
 
 /**
@@ -15,7 +16,7 @@ export async function run(): Promise<void> {
 
     if (schemaMatches.length === 0) {
       throw new Error(
-        `could not find a Cedar schema file (looked for ${schemaFilePattern}`
+        `could not find a Cedar schema file (looked for ${schemaFilePattern})`
       )
     }
 
@@ -29,12 +30,37 @@ export async function run(): Promise<void> {
 
     let hasErrors = false
 
+    if (policyFiles.length === 0) {
+      // fail the action as this is a misconfiguration, we shouldn't pass if there are no policies to test
+      throw new Error(
+        `could not find any Cedar policies to validate (looked for ${policyFiles})`
+      )
+    }
+
+    if (policyFiles.length > 1) {
+      core.info(
+        `Validating ${policyFiles.length} Cedar policies using schema ${schemaFile}...`
+      )
+    } else {
+      core.info(`Validating 1 Cedar policy using schema ${schemaFile}...`)
+    }
+
     for (const policyFile of policyFiles) {
       const policySet = readFileSync(policyFile, 'utf-8')
       const result = validatePolicySet({
         schema,
         policySet
       })
+
+      if (result.validationErrors.length > 0) {
+        console.log(`${chalk.red('✗')} ${chalk.dim(policyFile)}`)
+      } else if (result.validationWarnings.length > 0) {
+        console.log(
+          `${chalk.green('✔')} ${chalk.dim(policyFile)} ${chalk.yellow('[has warnings]')}`
+        )
+      } else {
+        console.log(`${chalk.green('✔')} ${chalk.dim(policyFile)}`)
+      }
 
       if (result.schemaErrors.length > 0) {
         const allErrors: string[] = []
