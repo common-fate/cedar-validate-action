@@ -1,5 +1,4 @@
 import * as core from '@actions/core'
-import chalk from 'chalk'
 import { readFileSync } from 'fs'
 import { glob } from 'glob'
 import { ValidateOutput, validatePolicySet } from './validate'
@@ -15,8 +14,6 @@ interface TestResult {
  */
 export async function run(): Promise<void> {
   try {
-    chalk.level = 2 // enable colored output for GitHub Actions
-
     const schemaFilePattern: string = core.getInput('schema-file')
 
     const schemaMatches = await glob(schemaFilePattern)
@@ -33,7 +30,9 @@ export async function run(): Promise<void> {
 
     const schema = JSON.parse(schemaString)
 
-    const policyFiles = await glob('**/*.cedar')
+    const policyFilePattern: string = core.getInput('policy-files')
+
+    const policyFiles = await glob(policyFilePattern)
 
     let hasErrors = false
     let hasWarnings = false

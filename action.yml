@@ -16,6 +16,12 @@ inputs:
       specified, the first file matching the glob will be used.'
     required: true
     default: '**/*.cedarschema.json'
+
+  policy-files:
+    description: 'The Cedar policy files to validate.'
+    required: true
+    default: '**/*.cedar'
+
   ignore-confusable-identifier-warning:
     description:
       'Ignore the confusable identifier warning, to prevent "/" characters in
@@ -24,6 +30,7 @@ inputs:
       will be updated to false.'
     required: true
     default: 'true'
+
   fail-on-warnings:
     description: 'Set the action status to fail if any warnings are present.'
     required: true
