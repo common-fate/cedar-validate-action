@@ -98,7 +98,7 @@ export async function run(): Promise<void> {
           startLine: err.sourceLocation?.start.line,
           endColumn: err.sourceLocation?.end.col,
           endLine: err.sourceLocation?.end.line,
-          title: 'Cedar Validation Error'
+          title: 'Cedar Validation Warning'
         })
       }
 
