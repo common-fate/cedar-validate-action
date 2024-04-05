@@ -10,6 +10,8 @@ import { validatePolicySet } from './validate'
  */
 export async function run(): Promise<void> {
   try {
+    chalk.level = 2 // enable colored output for GitHub Actions
+
     const schemaFilePattern: string = core.getInput('schema-file')
 
     const schemaMatches = await glob(schemaFilePattern)
