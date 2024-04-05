@@ -8,3 +8,25 @@
 
 A GitHub Action to validate [Cedar](https://www.cedarpolicy.com) authorization
 policies.
+
+## Usage
+
+```yaml
+name: 'Test'
+
+on: [push]
+
+jobs:
+  cedar:
+    name: Cedar
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Policies
+        uses: common-fate/cedar-validate-action@v1
+        with:
+          schema-file: ./example.cedarschema.json
+          policy-files: '**/*.cedar'
+```
