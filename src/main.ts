@@ -1,5 +1,7 @@
 import * as core from '@actions/core'
-import { wait } from './wait'
+import { readFileSync } from 'fs'
+import { glob } from 'glob'
+import { validatePolicySet } from './validate'
 
 /**
  * The main function for the action.
@@ -7,18 +9,65 @@ import { wait } from './wait'
  */
 export async function run(): Promise<void> {
   try {
-    const ms: string = core.getInput('milliseconds')
+    const schemaFile: string = core.getInput('schema-file')
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+    const schemaString = readFileSync(schemaFile, 'utf-8')
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    const schema = JSON.parse(schemaString)
 
-    // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
+    const policyFiles = await glob('**/*.cedar')
+
+    let hasErrors = false
+
+    for (const policyFile of policyFiles) {
+      const policySet = readFileSync(policyFile, 'utf-8')
+      const result = validatePolicySet({
+        schema,
+        policySet
+      })
+
+      if (result.schemaErrors.length > 0) {
+        const allErrors: string[] = []
+
+        for (const err of result.schemaErrors) {
+          core.error(err, {
+            file: schemaFile,
+            title: 'Cedar Schema Error',
+            startLine: 1
+          })
+          allErrors.push(err)
+        }
+
+        throw new Error(`Cedar schema is invalid:\n${allErrors.join('\n')}`)
+      }
+
+      for (const err of result.validationErrors) {
+        core.error(err.error, {
+          file: policyFile,
+          startColumn: err.sourceLocation?.start.col,
+          startLine: err.sourceLocation?.start.line,
+          endColumn: err.sourceLocation?.end.col,
+          endLine: err.sourceLocation?.end.line,
+          title: 'Cedar Validation Error'
+        })
+        hasErrors = true
+      }
+
+      for (const err of result.validationWarnings) {
+        core.warning(err.warning, {
+          file: policyFile,
+          startColumn: err.sourceLocation?.start.col,
+          startLine: err.sourceLocation?.start.line,
+          endColumn: err.sourceLocation?.end.col,
+          endLine: err.sourceLocation?.end.line,
+          title: 'Cedar Validation Error'
+        })
+      }
+
+      if (hasErrors) {
+        core.setFailed('Cedar policies have validation errors')
+      }
+    }
   } catch (error) {
     // Fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message)
